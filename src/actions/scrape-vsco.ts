@@ -1,6 +1,6 @@
 "use server";
 
-import { RedirectType, redirect } from "next/navigation";
+import { cache } from "react";
 
 const userAgents = {
 	"Sec-Ch-Prefers-Color-Scheme": "dark",
@@ -17,18 +17,12 @@ const userAgents = {
 
 const regex = /^https:\/\/vsco\.co\/[a-zA-Z0-9_-]+\/media\/[a-zA-Z0-9]{24}$/;
 
-export async function scrapeVscoPhoto(_: unknown, form: FormData) {
-	const photo = form.get("photo")?.toString();
-
+export const scrapeVscoPhoto = cache(async (photo: string) => {
 	if (!photo || !regex.test(photo)) {
-		form.set("photo", "");
-		return "Invalid URL";
+		return;
 	}
 
-	const response = await fetch(new URL(photo), {
-		method: "GET",
-		headers: userAgents,
-	});
+	const response = await fetch(photo, { headers: userAgents });
 	const html = await response.text();
 
 	const rawData = html.match(
@@ -36,8 +30,7 @@ export async function scrapeVscoPhoto(_: unknown, form: FormData) {
 	)?.[0];
 
 	if (!rawData) {
-		form.set("photo", "");
-		return "Invalid URL";
+		return;
 	}
 
 	const data = JSON.parse(rawData);
@@ -47,4 +40,4 @@ export async function scrapeVscoPhoto(_: unknown, form: FormData) {
 	const url = new URL(rawURL);
 	url.searchParams.set("w", "1200");
 	return url.toString();
-}
+});
